@@ -1,0 +1,228 @@
+#!/bin/bash
+
+
+rpm_install_chrome()
+{
+
+   cd $HOME
+
+   cd Downloads
+
+   wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+
+   sudo dnf localinstall google-chrome-stable_current_x86_64.rpm
+
+}
+
+
+ubuntu_install_git_core_credentials_manager()
+{
+
+   cd $HOME
+
+   cd Downloads
+
+   wget https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.605/gcmcore-linux_amd64.2.0.605.12951.deb
+
+   sudo dpkg -i gcmcore-linux_amd64.2.0.605.12951.deb
+
+   sleep 10
+
+   git-credential-manager-core configure
+
+   git config --global credential.credentialStore secretservice
+
+}
+
+
+other_install_git_core_credentials_manager()
+{
+
+   cd $HOME
+
+   cd Downloads
+
+   wget https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.605/gcmcore-linux_amd64.2.0.605.12951.tar.gz
+
+   sudo tar -xzvf gcmcore-linux_amd64.2.0.605.12951.tar.gz -C /usr/local/bin
+
+   sleep 2
+
+   git-credential-manager-core configure
+
+   sleep 2
+
+   git config --global credential.credentialStore secretservice
+
+   sleep 4
+
+}
+
+
+patch_bashrc()
+{
+
+   cd $HOME
+
+   echo "" >> .bashrc
+   echo "PATH=\$HOME/solution/basis/archive/tool-linux/bin:\$PATH" >>  .bashrc
+   echo "" >>  .bashrc
+   echo "export PATH" >>  .bashrc
+   echo "" >>  .bashrc
+   echo "" >>  .bashrc
+   echo "" >>  .bashrc
+   echo "" >>  .bashrc
+
+}
+
+if [ -f /etc/os-release ]; then
+    # freedesktop.org and systemd
+    . /etc/os-release
+    DISTRO=$ID
+    DESKTOP_ENVIRONMENT=$VARIANT_ID
+    DISTRO_RELEASE=$VERSION_ID
+
+elif type lsb_release >/dev/null 2>&1; then
+    # linuxbase.org
+    OS=$(lsb_release -si)
+    VER=$(lsb_release -sr)
+elif [ -f /etc/lsb-release ]; then
+    # For some versions of Debian/Ubuntu without lsb_release command
+    . /etc/lsb-release
+    OS=$DISTRIB_ID
+    VER=$DISTRIB_RELEASE
+elif [ -f /etc/debian_version ]; then
+    # Older Debian/Ubuntu/etc.
+    OS=Debian
+    VER=$(cat /etc/debian_version)
+elif [ -f /etc/SuSe-release ]; then
+    # Older SuSE/etc.
+    ...
+elif [ -f /etc/redhat-release ]; then
+    # Older Red Hat, CentOS, etc.
+    ...
+else
+    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+    OS=$(uname -s)
+    VER=$(uname -r)
+fi 
+
+if [ -z "$DESKTOP_ENVIRONMENT" ]; then
+
+#	echo "DESKTOP_ENVIRONMENT is empty here"
+
+   if [ "$DISTRO" = "ubuntu" ]; then
+
+#	echo "DISTRO is ubuntu"
+
+	IDESKTOP="${XDG_CURRENT_DESKTOP,,}"
+
+#	echo "lower case xdg_current_desktop is $IDESKTOP"
+
+      if [[ "$IDESKTOP",,} == *"gnome"* ]]; then
+
+#	echo "lower case xdg_current_desktop contains gnome"
+
+         DESKTOP_ENVIRONMENT="gnome"
+
+      fi
+
+   fi
+
+fi
+
+echo "DISTRO is $DISTRO"
+echo "DESKTOP_ENVIRONMENT is $DESKTOP_ENVIRONMENT"
+echo "DISTRO_RELEASE is $DISTRO_RELEASE"
+
+
+if [ "$DISTRO" = "ubuntu" ]; then
+
+   sudo apt remove -y initramfs-tools
+
+   sudo apt remove -y firefox
+
+   sudo snap remove firefox
+
+   sudo apt remove -y thunderbird
+
+   sudo apt remove -y rhythmbox
+
+   sudo apt remove -y libreoffice*
+
+   sudo apt autoremove -y
+
+   sudo apt update
+
+   sudo apt upgrade -y
+
+   INSTALL="sudo apt -y install"
+
+elif [ "$DISTRO" = "fedora" ]; then   
+
+   rpm_install_chrome
+
+   sudo dnf -y remove firefox libreoffice*
+
+   sudo dnf -y remove kmail kcalendar
+
+   sudo dnf -y check-update
+
+   sudo dnf -y upgrade
+
+   INSTALL="sudo dnf install -y"
+
+fi
+
+
+$INSTALL git git-lfs
+
+if [ "$DISTRO" = "ubuntu" ]; then
+
+
+   sudo apt autoremove -y
+
+   ubuntu_install_git_core_credentials_manager
+
+   patch_bashrc
+
+
+elif [ "$DISTRO" = "fedora" ]; then   
+
+#   sudo dnf check-update
+
+ #  sudo dnf upgrade
+
+   other_install_git_core_credentials_manager
+ 
+   patch_bashrc
+
+fi
+
+
+PATH=$HOME/solution/basis/archive/tool-linux/bin:$PATH
+
+export PATH
+
+
+clone_linux_basis_solution()
+{
+
+   cd $HOME
+
+   mkdir solution
+
+   cd solution
+
+   git clone https://github.com/ca2/linux-basis-solution basis --recurse-submodules
+
+}
+
+
+clone_linux_basis_solution
+
+
+checkout
+
+
+

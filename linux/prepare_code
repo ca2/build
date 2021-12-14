@@ -1,0 +1,45 @@
+#!/bin/bash
+
+
+clone_linux_basis_solution()
+{
+
+   cd $HOME
+
+   mkdir solution
+
+   cd solution
+
+   git clone https://github.com/ca2/linux-basis-solution basis --recurse-submodules
+
+}
+
+
+clone_linux_basis_solution
+
+
+checkout
+
+
+_distro__desktop_environment_and_release
+
+
+if [ "$DISTRO" = "fedora" ]; then
+
+
+   fedorarepo
+
+
+   if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
+
+
+      kfedoradeps
+
+
+   fi
+
+
+fi
+
+
+
