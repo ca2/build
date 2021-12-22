@@ -15,19 +15,19 @@ clone_linux_basis_solution()
 }
 
 
+clone_linux_basis_solution
+
+
 PATH=$HOME/solution/basis/archive/tool-linux/bin:$PATH
 
 
 export PATH
 
 
-. $HOME/solution/basis/archive/tool-linux/bin/_distro__desktop_environment_and_release
+. patch_shell
 
 
-patch_shell
-
-
-clone_linux_basis_solution
+. _distro__desktop_environment_and_release
 
 
 checkout
@@ -73,6 +73,41 @@ elif [ "$DISTRO" = "ubuntu" ]; then
 
 
 fi
+
+
+
+
+echo ""
+echo ""
+
+
+echo "Asking system to restart..."
+
+
+echo ""
+echo ""
+
+
+sleep 1
+
+
+echo ""
+echo ""
+
+
+sleep 1
+
+
+if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
+
+   qdbus org.kde.Shutdown /Shutdown logoutAndReboot
+
+else
+
+   sudo reboot
+
+fi
+
 
 
 
