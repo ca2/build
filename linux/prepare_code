@@ -15,13 +15,22 @@ clone_linux_basis_solution()
 }
 
 
+PATH=$HOME/solution/basis/archive/tool-linux/bin:$PATH
+
+
+export PATH
+
+
+. $HOME/solution/basis/archive/tool-linux/bin/_distro__desktop_environment_and_release
+
+
+patch_shell
+
+
 clone_linux_basis_solution
 
 
 checkout
-
-
-. $HOME/solution/basis/archive/tool-linux/bin/_distro__desktop_environment_and_release
 
 
 if [ "$DISTRO" = "fedora" ]; then
@@ -66,7 +75,6 @@ elif [ "$DISTRO" = "ubuntu" ]; then
 fi
 
 
-patch_shell
 
 
 
