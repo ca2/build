@@ -1,18 +1,76 @@
 #!/bin/bash
 
+
 git_config()
 {
 
-   if [ -f "$HOME/Desktop/identification.txt" ]; then
+
+   if [ -f "$HOME/identification.txt" ]; then
 
 
-      echo "Getting the user.name an user.email from \"\$HOME/Desktop/identification.txt\""
+      echo ""
+      echo ""
+      echo ""
+      echo ""
+      echo "Getting the user.name and user.email from \"\$HOME/identification.txt\""
+      sleep 3
 
-      . "$HOME/Desktop/identification.txt"
 
-      git config --global user.name "$name"
-      git config --global user.email $email
-      
+      . "$HOME/identification.txt"
+
+
+      if [ ! -z "$name" ]; then
+
+         fetching_name=$name
+
+      elif [ ! -z "$user" ]; then
+
+         fetching_name=$user
+
+      elif [ ! -z "$username" ]; then
+
+         fetching_name=$username
+
+      fi
+
+
+      fetching_email=$email
+
+
+      if [ ! -z "$fetching_name" ]; then
+
+
+         if [ ! -z "$fetching_email" ]; then
+
+
+            echo ""
+            echo ""
+            echo "Found user.name=\"$fetching_name\""
+            sleep 1
+
+
+            echo ""
+            echo "Found user.email=$fetching_email"
+            sleep 1
+
+
+            echo ""
+            echo ""
+            echo ""
+            echo ""
+            echo "Configuring git..."
+
+
+            git config --global user.name "$fetching_name"
+            git config --global user.email $fetching_email
+
+
+            sleep 2
+
+
+         fi
+
+      fi
 
    fi
 
@@ -315,6 +373,27 @@ elif [ "$DISTRO" = "fedora" ]; then
    fi
 
 fi
+
+
+echo ""
+echo ""
+
+
+echo "Asking system to restart..."
+
+
+echo ""
+echo ""
+
+
+sleep 1
+
+
+echo ""
+echo ""
+
+
+sleep 1
 
 
 if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
