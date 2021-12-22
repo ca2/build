@@ -1,0 +1,331 @@
+#!/bin/bash
+
+git_config()
+{
+
+   if [ -f "$HOME/Desktop/identification.txt" ]; then
+
+
+      echo "Getting the user.name an user.email from \"\$HOME/Desktop/identification.txt\""
+
+      . "$HOME/Desktop/identification.txt"
+
+      git config --global user.name "$name"
+      git config --global user.email $email
+      
+
+   fi
+
+   GIT_USERNAME=$(git config --get user.name)
+   GIT_EMAIL=$(git config --get user.email)
+
+   CHANGE_GIT_USER_AND_EMAIL=false
+
+   if [ -z "$GIT_USERNAME" ]; then
+
+      CHANGE_GIT_USER_AND_EMAIL=true
+
+   elif [ -z "$GIT_EMAIL" ]; then
+
+      CHANGE_GIT_USER_AND_EMAIL=true
+
+   else
+
+      while true; do
+
+         echo ""
+         echo ""
+         echo ""
+         echo ""
+         echo "Your current name for Git is \"$GIT_USERNAME\""
+         echo "Your current email for Git is $GIT_EMAIL"
+         echo ""
+         echo ""
+         echo "Is it correct? (yes/no)"
+         read RESPONSE
+
+         if [ "$RESPONSE" = "yes" ]; then
+
+            CHANGE_GIT_USER_AND_EMAIL=false
+
+            break
+
+         elif [ "$RESPONSE" = "no" ]; then
+
+            CHANGE_GIT_USER_AND_EMAIL=true
+
+            break
+
+         fi
+
+      done
+
+   fi
+
+   if [ "$CHANGE_GIT_USER_AND_EMAIL" = true ]; then
+
+      while true; do
+
+         echo ""
+         echo ""
+         echo ""
+         echo ""
+         echo "Configuring Git:"
+         echo ""
+         echo "Please enter your name:"
+         read GIT_USERNAME
+         echo ""
+         echo "Please enter your email:"
+         read GIT_EMAIL
+         echo ""
+         echo ""
+         echo ""
+         echo ""
+         echo "Your name for Git will be \"$GIT_USERNAME\""
+         echo "Your email for Git will be $GIT_EMAIL"
+         echo ""
+         echo ""
+         echo "Is it correct? (yes/*)"
+         read RESPONSE
+
+         if [ "$RESPONSE" = "yes" ]; then
+
+            break
+
+         fi
+
+      done
+
+      git config --global user.name "$GIT_USERNAME"
+      git config --global user.email $GIT_EMAIL
+
+   fi
+
+
+   git config --global pull.rebase false
+
+}
+
+
+deb_install_chrome()
+{
+
+   cd $HOME
+
+   cd Downloads
+
+   wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+
+   sudo apt -y install ./google-chrome-stable_current_amd64.deb
+
+}
+
+
+rpm_install_chrome()
+{
+
+   cd $HOME
+
+   cd Downloads
+
+   wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+
+   sudo dnf -y localinstall google-chrome-stable_current_x86_64.rpm
+
+}
+
+
+ubuntu_install_git_core_credentials_manager()
+{
+
+   cd $HOME
+
+   cd Downloads
+
+   wget https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.632/gcmcore-linux_amd64.2.0.632.34631.deb
+
+   sudo dpkg -i gcmcore-linux_amd64.2.0.632.34631.deb
+
+   sleep 10
+
+   git-credential-manager-core configure
+
+   git config --global credential.credentialStore secretservice
+
+}
+
+
+other_install_git_core_credentials_manager()
+{
+
+   cd $HOME
+
+   cd Downloads
+
+   wget https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.605/gcmcore-linux_amd64.2.0.605.12951.tar.gz
+
+   sudo tar -xzvf gcmcore-linux_amd64.2.0.605.12951.tar.gz -C /usr/local/bin
+
+   sleep 2
+
+   git-credential-manager-core configure
+
+   sleep 2
+
+   git config --global credential.credentialStore secretservice
+
+   sleep 4
+
+}
+
+
+if [ -f /etc/os-release ]; then
+    # freedesktop.org and systemd
+    . /etc/os-release
+    DISTRO=$ID
+    DESKTOP_ENVIRONMENT=$VARIANT_ID
+    DISTRO_RELEASE=$VERSION_ID
+
+elif type lsb_release >/dev/null 2>&1; then
+    # linuxbase.org
+    OS=$(lsb_release -si)
+    VER=$(lsb_release -sr)
+elif [ -f /etc/lsb-release ]; then
+    # For some versions of Debian/Ubuntu without lsb_release command
+    . /etc/lsb-release
+    OS=$DISTRIB_ID
+    VER=$DISTRIB_RELEASE
+elif [ -f /etc/debian_version ]; then
+    # Older Debian/Ubuntu/etc.
+    OS=Debian
+    VER=$(cat /etc/debian_version)
+elif [ -f /etc/SuSe-release ]; then
+    # Older SuSE/etc.
+    ...
+elif [ -f /etc/redhat-release ]; then
+    # Older Red Hat, CentOS, etc.
+    ...
+else
+    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+    OS=$(uname -s)
+    VER=$(uname -r)
+fi 
+
+if [ -z "$DESKTOP_ENVIRONMENT" ]; then
+
+#	echo "DESKTOP_ENVIRONMENT is empty here"
+
+   if [ "$DISTRO" = "ubuntu" ]; then
+
+#	echo "DISTRO is ubuntu"
+
+	IDESKTOP="${XDG_CURRENT_DESKTOP,,}"
+
+#	echo "lower case xdg_current_desktop is $IDESKTOP"
+
+      if [[ "$IDESKTOP",,} == *"gnome"* ]]; then
+
+#	echo "lower case xdg_current_desktop contains gnome"
+
+         DESKTOP_ENVIRONMENT="gnome"
+
+      fi
+
+   fi
+
+fi
+
+
+echo "DISTRO is $DISTRO"
+echo "DESKTOP_ENVIRONMENT is $DESKTOP_ENVIRONMENT"
+echo "DISTRO_RELEASE is $DISTRO_RELEASE"
+
+
+if [ "$DISTRO" = "ubuntu" ]; then
+
+   deb_install_chrome
+
+   sudo apt remove -y initramfs-tools
+
+   sudo apt remove -y firefox
+
+   sudo snap remove firefox
+
+   sudo apt remove -y thunderbird
+
+   sudo apt remove -y rhythmbox
+
+   sudo apt remove -y libreoffice*
+
+   sudo apt autoremove -y
+
+   sudo apt update
+
+   sudo apt upgrade -y
+
+   sudo apt install -y cifs-utils
+
+   sudo apt install -y cmake build-essential pkgconf
+
+   INSTALL="sudo apt -y install"
+
+elif [ "$DISTRO" = "fedora" ]; then   
+
+   rpm_install_chrome
+
+   sudo dnf -y install cmake gcc-c++ pkgconf gdb
+
+   sudo dnf -y remove firefox libreoffice*
+
+   sudo dnf -y remove kmail kcalendar
+
+   sudo dnf -y check-update
+
+   sudo dnf -y upgrade
+
+   INSTALL="sudo dnf install -y"
+
+fi
+
+
+$INSTALL git git-lfs
+
+
+git_config
+
+
+if [ "$DISTRO" = "ubuntu" ]; then
+
+
+   sudo apt autoremove -y
+
+   ubuntu_install_git_core_credentials_manager
+
+
+elif [ "$DISTRO" = "fedora" ]; then   
+
+   other_install_git_core_credentials_manager
+ 
+   if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
+
+      sudo sed -i '/^#\{0,1\}\(Relogin=\).*/ s//\1true/' /etc/sddm.conf
+      sudo sed -i '/^#\{0,1\}\(Session=\).*/ s//\1plasma.desktop/' /etc/sddm.conf
+      sudo sed -i '/^#\{0,1\}\(User=\).*/ s//\1build/' /etc/sddm.conf
+
+   fi
+
+fi
+
+
+if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
+
+   qdbus org.kde.Shutdown /Shutdown logoutAndReboot
+
+else
+
+   sudo reboot
+
+fi
+
+
+

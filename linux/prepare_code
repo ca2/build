@@ -21,7 +21,7 @@ clone_linux_basis_solution
 checkout
 
 
-_distro__desktop_environment_and_release
+. $HOME/solution/basis/archive/tool-linux/bin/_distro__desktop_environment_and_release
 
 
 if [ "$DISTRO" = "fedora" ]; then
@@ -36,10 +36,37 @@ if [ "$DISTRO" = "fedora" ]; then
       kfedoradeps
 
 
+   elif [ "$DESKTOP_ENVIRONMENT" = "gnome" ]; then
+
+
+      fedoradeps
+
+
+   fi
+
+
+elif [ "$DISTRO" = "ubuntu" ]; then
+
+
+   if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
+
+
+      kubuntudeps
+
+
+   elif [ "$DESKTOP_ENVIRONMENT" = "gnome" ]; then
+
+
+      ubuntudeps
+
+
    fi
 
 
 fi
+
+
+patch_shell
 
 
 

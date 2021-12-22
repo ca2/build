@@ -1,0 +1,101 @@
+#!/bin/bash
+
+
+git_config()
+{
+
+   GIT_USERNAME=$(git config --get user.name)
+   GIT_EMAIL=$(git config --get user.email)
+
+   CHANGE_GIT_USER_AND_EMAIL=false
+
+   if [ -z "$GIT_USERNAME" ]; then
+
+      CHANGE_GIT_USER_AND_EMAIL=true
+
+   elif [ -z "$GIT_EMAIL" ]; then
+
+      CHANGE_GIT_USER_AND_EMAIL=true
+
+   else
+
+      while true; do
+
+         echo ""
+         echo ""
+         echo ""
+         echo ""
+         echo "Your current name for Git is \"$GIT_USERNAME\""
+         echo "Your current email for Git is $GIT_EMAIL"
+         echo ""
+         echo ""
+         echo "Is it correct? (yes/no)"
+         read RESPONSE
+
+         if [ "$RESPONSE" = "yes" ]; then
+
+            CHANGE_GIT_USER_AND_EMAIL=false
+
+            break
+
+         elif [ "$RESPONSE" = "no" ]; then
+
+            CHANGE_GIT_USER_AND_EMAIL=true
+
+            break
+
+         fi
+
+      done
+
+   fi
+
+   if [ "$CHANGE_GIT_USER_AND_EMAIL" = true ]; then
+
+      while true; do
+
+         echo ""
+         echo ""
+         echo ""
+         echo ""
+         echo "Configuring Git:"
+         echo ""
+         echo "Please enter your name:"
+         read GIT_USERNAME
+         echo ""
+         echo "Please enter your email:"
+         read GIT_EMAIL
+         echo ""
+         echo ""
+         echo ""
+         echo ""
+         echo "Your name for Git will be \"$GIT_USERNAME\""
+         echo "Your email for Git will be $GIT_EMAIL"
+         echo ""
+         echo ""
+         echo "Is it correct? (yes/*)"
+         read RESPONSE
+
+         if [ "$RESPONSE" = "yes" ]; then
+
+            break
+
+         fi
+
+      done
+
+      git config --global user.name "$GIT_USERNAME"
+      git config --global user.email $GIT_EMAIL
+
+   fi
+
+
+   git config --global pull.rebase false
+
+}
+
+
+git_config
+
+
+
