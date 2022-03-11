@@ -1,8 +1,292 @@
 #!/bin/bash
 
 
+if [ ! -d "$HOME/bin" ]; then
+
+
+   mkdir "$HOME/bin"
+
+
+fi
+
+
+get_full_hostname()
+{
+
+   if [ "$__SYSTEM_DISTRO_FAMILY" = "zypper" ]; then
+
+      FULL_HOSTNAME=$(cat /etc/hostname)
+
+   elif [ "$__SYSTEM_DISTRO" = "fedora" ]; then
+
+      FULL_HOSTNAME=$(hostnamectl --static)
+
+   elif [ "$__SYSTEM_DISTRO" = "ubuntu" ]; then
+
+      FULL_HOSTNAME=$(hostnamectl --static)
+
+   else
+
+      FULL_HOSTNAME=$(hostname -f)
+
+   fi
+
+}
+
+
+distro__desktop_environment_and_release()
+{
+
+
+   if [ -f /etc/os-release ]; then
+      
+      # freedesktop.org and systemd
+      
+      . /etc/os-release
+
+      __SYSTEM_DISTRO=$ID
+      __SYSTEM_DESKTOP_ENVIRONMENT=$VARIANT_ID
+      __SYSTEM_DISTRO_RELEASE=$VERSION_ID
+
+   elif type lsb_release >/dev/null 2>&1; then
+      # linuxbase.org
+      OS=$(lsb_release -si)
+      VER=$(lsb_release -sr)
+   elif [ -f /etc/lsb-release ]; then
+      # For some versions of Debian/Ubuntu without lsb_release command
+      . /etc/lsb-release
+      OS=$DISTRIB_ID
+      VER=$DISTRIB_RELEASE
+   elif [ -f /etc/debian_version ]; then
+      # Older Debian/Ubuntu/etc.
+      OS=Debian
+      VER=$(cat /etc/debian_version)
+   elif [ -f /etc/SuSe-release ]; then
+      # Older SuSE/etc.
+      ...
+   elif [ -f /etc/redhat-release ]; then
+      # Older Red Hat, CentOS, etc.
+      ...
+   else
+      # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+      OS=$(uname -s)
+      VER=$(uname -r)
+   fi 
+
+
+   __SYSTEM_DISTRO_FAMILY="$__SYSTEM_DISTRO"
+
+
+   if [ "$__SYSTEM_DISTRO" = "ubuntu" ]; then
+
+      __SYSTEM_DISTRO_FAMILY="debian"
+
+   elif [ "$__SYSTEM_DISTRO" = "debian" ]; then
+
+      __SYSTEM_DISTRO_FAMILY="debian"
+
+   elif [ "$__SYSTEM_DISTRO" = "opensuse-tumbleweed" ]; then
+
+      __SYSTEM_DISTRO_FAMILY="zypper"
+
+   elif [ "$__SYSTEM_DISTRO" = "opensuse-leap" ]; then
+
+      __SYSTEM_DISTRO_FAMILY="zypper"
+
+   fi
+
+
+   if [ -z "$__SYSTEM_DESKTOP_ENVIRONMENT" ]; then
+
+      # echo "DESKTOP_ENVIRONMENT is empty here"
+
+      if [ "$__SYSTEM_DISTRO_FAMILY" = "debian" ] || [ "$__SYSTEM_DISTRO_FAMILY" = "zypper" ]; then
+
+         # echo "DISTRO is ubuntu"
+
+         __SYSTEM_IDESKTOP="${XDG_CURRENT_DESKTOP,,}"
+
+         # echo "lower case xdg_current_desktop is $IDESKTOP"
+
+         if [[ "$__SYSTEM_IDESKTOP" == *"gnome"* ]]; then
+
+            # echo "lower case xdg_current_desktop contains gnome"
+
+            __SYSTEM_DESKTOP_ENVIRONMENT="gnome"
+
+         elif [[ "$__SYSTEM_IDESKTOP" == *"kde"* ]]; then
+
+            # echo "lower case xdg_current_desktop contains gnome"
+
+            __SYSTEM_DESKTOP_ENVIRONMENT="kde"
+
+         fi
+
+      fi
+
+   fi
+
+
+   echo "__SYSTEM_DISTRO is $__SYSTEM_DISTRO"
+   echo "__SYSTEM_DISTRO_FAMILY is $__SYSTEM_DISTRO_FAMILY"
+   echo "__SYSTEM_DESKTOP_ENVIRONMENT is $__SYSTEM_DESKTOP_ENVIRONMENT"
+   echo "__SYSTEM_DISTRO_RELEASE is $__SYSTEM_DISTRO_RELEASE"
+
+
+}
+
+
+full_hostname_config()
+{
+
+   get_full_hostname
+
+   DEFER_FULL_HOSTNAME="1"
+
+   OLD_FULL_HOSTNAME=${FULL_HOSTNAME}
+
+   NEW_FULL_HOSTNAME=${OLD_FULL_HOSTNAME}
+
+   while [ "$DEFER_FULL_HOSTNAME" -eq "1" ]; do
+
+      echo ""
+      echo ""
+      echo "The following repository will be required https://github.com/<GITHUB_ID>/user_config_<FULL_HOSTNAME>"
+      echo ""
+      echo ""
+      echo "Full Hostname: ${NEW_FULL_HOSTNAME}"
+      echo "Required repository: https://github.com/<accountid>/user_config_${NEW_FULL_HOSTNAME}"
+      echo ""
+      echo ""
+      echo "Is Full Hostname correct? (yes/*)"
+
+      read RESPONSE
+
+      if [ "$RESPONSE" = "yes" ]; then
+
+         DEFER_FULL_HOSTNAME="0"
+
+         break
+
+      else
+
+         DEFER_FULL_HOSTNAME="1"
+
+      fi
+
+      echo ""
+      echo ""
+      echo "Please enter full hostname:"
+      read NEW_FULL_HOSTNAME
+
+   done
+
+   if [ "$FULL_HOSTNAME" != "$NEW_FULL_HOSTNAME" ]; then
+
+      if [ "$__SYSTEM_DISTRO_FAMILY" = "zypper" ]; then   
+
+         sudo hostname $NEW_FULL_HOSTNAME
+
+         sudo bash -c "echo $NEW_FULL_HOSTNAME > /etc/hostname"
+
+         sudo sed -i "s/localhost\.localdomain/${NEW_FULL_HOSTNAME}/" /etc/hosts
+
+      else
+
+         sudo hostnamectl set-hostname $NEW_FULL_HOSTNAME
+
+         sudo sed -i "s/${OLD_FULL_HOSTNAME}/${NEW_FULL_HOSTNAME}/" /etc/hosts
+         sudo sed -i "s/localhost\.localdomain/${NEW_FULL_HOSTNAME}/" /etc/hosts
+
+      fi
+
+   fi
+
+}
+
+
+defer_git_config()
+{
+
+   get_full_hostname
+   GITHUB_ID=$(cat $HOME/github_id.txt)
+   GITHUB_ID=($echo $GITHUB_ID)
+
+
+   DEFER_GIT_CONFIG="1"
+
+
+   while [ "$DEFER_GIT_CONFIG" -eq "1" ]; do
+
+      git ls-remote https://github.com/$GITHUB_ID/user_config_$FULL_HOSTNAME -q
+
+      USER_LOCAL_CONFIG_OK=$?
+
+      if [ "$USER_LOCAL_CONFIG_OK" -eq "0" ]; then
+
+         break
+
+      fi
+
+      echo ""
+      echo ""
+      echo "Could not connect to https://github.com/$GITHUB_ID/user_config_$FULL_HOSTNAME"
+      echo ""
+      echo ""
+      
+      while true; do
+
+         echo "Retry? (Y/n)"
+         read RESPONSE
+
+
+         if [ -z "$RESPONSE" ]; then
+
+            DEFER_GIT_CONFIG="1"
+
+            break
+
+         elif [ "$RESPONSE" = "y"]; then
+
+            DEFER_GIT_CONFIG="1"
+
+            break
+
+         elif [ "$RESPONSE" = "Y"]; then
+
+            DEFER_GIT_CONFIG="1"
+
+            break
+
+         elif [ "$RESPONSE" = "n"]; then
+
+            DEFER_GIT_CONFIG="0"
+
+            break
+
+         elif [ "$RESPONSE" = "N"]; then
+
+            DEFER_GIT_CONFIG="0"
+
+            break
+
+         fi
+
+      done
+            
+   done
+
+}
+
+
 git_config()
 {
+
+
+   full_hostname_config
+
+
+   get_full_hostname
 
 
    if [ -f "$HOME/identification.txt" ]; then
@@ -12,11 +296,21 @@ git_config()
       echo ""
       echo ""
       echo ""
-      echo "Getting the user.name and user.email from \"\$HOME/identification.txt\""
+      echo "Getting the Git Hub account name, user.name and user.email from \"\$HOME/identification.txt\""
       sleep 3
 
 
       . "$HOME/identification.txt"
+
+      if [ ! -z "$id" ]; then
+
+         fetching_id=$id
+
+      elif [ ! -z "$github_id" ]; then
+
+         fetching_id=$github_id
+
+      fi
 
 
       if [ ! -z "$name" ]; then
@@ -45,6 +339,12 @@ git_config()
 
             echo ""
             echo ""
+            echo "Found Git Hub account name=\"$fetching_id\""
+            sleep 1
+
+
+            echo ""
+            echo ""
             echo "Found user.name=\"$fetching_name\""
             sleep 1
 
@@ -61,6 +361,7 @@ git_config()
             echo "Configuring git..."
 
 
+            echo "$fetching_id" >> $HOME/github_id.txt
             git config --global user.name "$fetching_name"
             git config --global user.email $fetching_email
 
@@ -74,12 +375,18 @@ git_config()
 
    fi
 
+   GITHUB_ID=$(cat $HOME/github_id.txt)
+   GITHUB_ID=($echo $GITHUB_ID)
    GIT_USERNAME=$(git config --get user.name)
    GIT_EMAIL=$(git config --get user.email)
 
    CHANGE_GIT_USER_AND_EMAIL=false
 
-   if [ -z "$GIT_USERNAME" ]; then
+   if [ -z "$GITHUB_ID" ]; then
+
+      CHANGE_GIT_USER_AND_EMAIL=true
+
+   elif [ -z "$GIT_USERNAME" ]; then
 
       CHANGE_GIT_USER_AND_EMAIL=true
 
@@ -89,34 +396,47 @@ git_config()
 
    else
 
-      while true; do
+      git ls-remote https://github.com/$GITHUB_ID/user_config_$FULL_HOSTNAME -q
 
-         echo ""
-         echo ""
-         echo ""
-         echo ""
-         echo "Your current name for Git is \"$GIT_USERNAME\""
-         echo "Your current email for Git is $GIT_EMAIL"
-         echo ""
-         echo ""
-         echo "Is it correct? (yes/no)"
-         read RESPONSE
+      USER_LOCAL_CONFIG_OK=$?
 
-         if [ "$RESPONSE" = "yes" ]; then
+      if [ "$USER_LOCAL_CONFIG_OK" -ne "0" ]; then
 
-            CHANGE_GIT_USER_AND_EMAIL=false
+         CHANGE_GIT_USER_AND_EMAIL=true
 
-            break
+      else
 
-         elif [ "$RESPONSE" = "no" ]; then
+         while true; do
 
-            CHANGE_GIT_USER_AND_EMAIL=true
+            echo ""
+            echo ""
+            echo ""
+            echo ""
+            echo "Your current Git Hub account name is \"$GITHUB_ID\""
+            echo "Your current name for Git is \"$GIT_USERNAME\""
+            echo "Your current email for Git is $GIT_EMAIL"
+            echo ""
+            echo ""
+            echo "Is it correct? (yes/no)"
+            read RESPONSE
 
-            break
+            if [ "$RESPONSE" = "yes" ]; then
 
-         fi
+               CHANGE_GIT_USER_AND_EMAIL=false
 
-      done
+               break
+
+            elif [ "$RESPONSE" = "no" ]; then
+
+               CHANGE_GIT_USER_AND_EMAIL=true
+
+               break
+
+            fi
+
+         done
+
+      fi
 
    fi
 
@@ -130,6 +450,9 @@ git_config()
          echo ""
          echo "Configuring Git:"
          echo ""
+         echo "Please enter your Git Hub account name:"
+         read GITHUB_ID
+         echo ""
          echo "Please enter your name:"
          read GIT_USERNAME
          echo ""
@@ -139,6 +462,7 @@ git_config()
          echo ""
          echo ""
          echo ""
+         echo "Your Git Hub account name will be \"$GITHUB_ID\""
          echo "Your name for Git will be \"$GIT_USERNAME\""
          echo "Your email for Git will be $GIT_EMAIL"
          echo ""
@@ -148,19 +472,70 @@ git_config()
 
          if [ "$RESPONSE" = "yes" ]; then
 
-            break
+
+            echo ""
+            echo ""
+
+            git ls-remote https://github.com/$GITHUB_ID/user_config_$FULL_HOSTNAME -q
+
+            USER_LOCAL_CONFIG_OK=$?
+
+            if [ "$USER_LOCAL_CONFIG_OK" -eq "0" ]; then
+
+               break
+
+            else
+
+               sleep 2
+
+               echo ""
+               echo ""
+               echo "Your Git Hub account doesn't contains repository user_config_$FULL_HOSTNAME ..."
+               echo "Please create it and try again."
+
+            fi
 
          fi
 
       done
 
+      echo "$GITHUB_ID" >> $HOME/github_id.txt
       git config --global user.name "$GIT_USERNAME"
       git config --global user.email $GIT_EMAIL
 
    fi
 
-
    git config --global pull.rebase false
+
+}
+
+
+zypper_install_chrome()
+{
+
+   cd
+
+   cd Downloads
+
+   if [ ! -d "install_google_chrome" ]; then
+
+      mkdir install_google_chrome
+
+      cd install_google_chrome
+
+      # https://www.how2shout.com/linux/how-to-install-chrome-on-opensuse-tumbleweed-or-leap-15/
+
+      sudo zypper ar http://dl.google.com/linux/chrome/rpm/stable/x86_64 Google-Chrome   
+
+      wget https://dl.google.com/linux/linux_signing_key.pub
+
+      sudo rpm --import linux_signing_key.pub
+
+      sudo zypper update
+
+      sudo zypper install google-chrome-stable
+
+   fi
 
 }
 
@@ -193,6 +568,22 @@ rpm_install_chrome()
 }
 
 
+install_git_core_credentials_manager()
+{
+
+   if [ "$__SYSTEM_DISTRO_FAMILY" = "debian" ]; then
+
+      ubuntu_install_git_core_credentials_manager
+
+   else
+
+      other_install_git_core_credentials_manager
+   
+   fi
+
+}
+
+
 ubuntu_install_git_core_credentials_manager()
 {
 
@@ -200,15 +591,21 @@ ubuntu_install_git_core_credentials_manager()
 
    cd Downloads
 
-   wget https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.632/gcmcore-linux_amd64.2.0.632.34631.deb
+   FILENAME="gcmcore-linux_amd64.2.0.632.34631.deb"
 
-   sudo dpkg -i gcmcore-linux_amd64.2.0.632.34631.deb
+   if [ ! -f "$FILENAME" ]; then
 
-   sleep 10
+      wget https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.632/$FILENAME
 
-   git-credential-manager-core configure
+      sudo dpkg -i $FILENAME
 
-   git config --global credential.credentialStore secretservice
+      sleep 2
+
+      git-credential-manager-core configure
+
+      git config --global credential.credentialStore secretservice
+
+   fi
 
 }
 
@@ -220,100 +617,123 @@ other_install_git_core_credentials_manager()
 
    cd Downloads
 
-   wget https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.605/gcmcore-linux_amd64.2.0.605.12951.tar.gz
+   FILENAME="gcmcore-linux_amd64.2.0.632.34631.tar.gz"
 
-   sudo tar -xzvf gcmcore-linux_amd64.2.0.605.12951.tar.gz -C /usr/local/bin
+   if [ ! -f "$FILENAME" ]; then
 
-   sleep 2
+      wget https://github.com/GitCredentialManager/git-credential-manager/releases/download/v2.0.632/$FILENAME
 
-   git-credential-manager-core configure
+      sudo tar -xzvf "$FILENAME" -C /usr/local/bin
 
-   sleep 2
+      sleep 1
 
-   git config --global credential.credentialStore secretservice
+      git-credential-manager-core configure
 
-   sleep 4
+      sleep 1
+
+      git config --global credential.credentialStore secretservice
+
+      sleep 2
+
+   fi
 
 }
 
+configure_automatic_login()
+{
 
-if [ -f /etc/os-release ]; then
-    # freedesktop.org and systemd
-    . /etc/os-release
-    DISTRO=$ID
-    DESKTOP_ENVIRONMENT=$VARIANT_ID
-    DISTRO_RELEASE=$VERSION_ID
+   if [ "$__SYSTEM_DISTRO" = "debian" ]; then
 
-elif type lsb_release >/dev/null 2>&1; then
-    # linuxbase.org
-    OS=$(lsb_release -si)
-    VER=$(lsb_release -sr)
-elif [ -f /etc/lsb-release ]; then
-    # For some versions of Debian/Ubuntu without lsb_release command
-    . /etc/lsb-release
-    OS=$DISTRIB_ID
-    VER=$DISTRIB_RELEASE
-elif [ -f /etc/debian_version ]; then
-    # Older Debian/Ubuntu/etc.
-    OS=Debian
-    VER=$(cat /etc/debian_version)
-elif [ -f /etc/SuSe-release ]; then
-    # Older SuSE/etc.
-    ...
-elif [ -f /etc/redhat-release ]; then
-    # Older Red Hat, CentOS, etc.
-    ...
-else
-    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
-    OS=$(uname -s)
-    VER=$(uname -r)
-fi 
+      if [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "gnome" ]; then
 
-if [ -z "$DESKTOP_ENVIRONMENT" ]; then
+         configure_debian_gnome_automatic_login
 
-#	echo "DESKTOP_ENVIRONMENT is empty here"
+      fi
 
-   if [ "$DISTRO" = "ubuntu" ]; then
+   elif [ "$__SYSTEM_DISTRO" = "fedora" ]; then
 
-#	echo "DISTRO is ubuntu"
+      if [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "kde" ]; then
 
-	IDESKTOP="${XDG_CURRENT_DESKTOP,,}"
-
-#	echo "lower case xdg_current_desktop is $IDESKTOP"
-
-      if [[ "$IDESKTOP",,} == *"gnome"* ]]; then
-
-#	echo "lower case xdg_current_desktop contains gnome"
-
-         DESKTOP_ENVIRONMENT="gnome"
+         configure_fedora_kde_automatic_login
 
       fi
 
    fi
 
-fi
+}
 
 
-echo "DISTRO is $DISTRO"
-echo "DESKTOP_ENVIRONMENT is $DESKTOP_ENVIRONMENT"
-echo "DISTRO_RELEASE is $DISTRO_RELEASE"
+configure_debian_gnome_automatic_login()
+{
+
+   sudo sed -i "/^#\{0,1\}\s*\(WaylandEnable\)\s*=.*/ s//\1=false/" /etc/gdm3/daemon.conf
+   sudo sed -i "/^#\{0,1\}\s*\(AutomaticLoginEnable\)\s*=.*/ s//\1=true/" /etc/gdm3/daemon.conf
+   sudo sed -i "/^#\{0,1\}\s*\(AutomaticLogin\)\s*=.*/ s//\1=$USER/" /etc/gdm3/daemon.conf
+
+}
 
 
-if [ "$DISTRO" = "ubuntu" ]; then
+configure_fedora_kde_automatic_login()
+{
+
+   sudo sed -i "/^#\{0,1\}\(Relogin=\).*/ s//\1true/" /etc/sddm.conf
+   sudo sed -i "/^#\{0,1\}\(Session=\).*/ s//\1plasma.desktop/" /etc/sddm.conf
+   sudo sed -i "/^#\{0,1\}\(User=\).*/ s//\1$USER/" /etc/sddm.conf
+
+}
+
+
+distro__desktop_environment_and_release
+
+
+if [ "$__SYSTEM_DISTRO_FAMILY" = "debian" ]; then
+
+
+   if [ "$__SYSTEM_DISTRO" = "debian" ]; then
+
+      if [ ! -f "firefox-esr_99_all.deb" ]; then
+
+         su - root -c "echo '$USER ALL=(ALL:ALL) ALL' >> /etc/sudoers"
+
+         sudo apt -y install equivs
+
+         wget https://ca2.software/build/linux/debian-browser
+
+         equivs-build debian-browser
+
+         sudo apt install ./firefox-esr_99_all.deb
+
+      fi
+
+   fi
 
    deb_install_chrome
 
-   sudo apt remove -y initramfs-tools
-
-   sudo apt remove -y firefox
-
-   sudo snap remove firefox
+   google-chrome &
 
    sudo apt remove -y thunderbird
 
    sudo apt remove -y rhythmbox
 
    sudo apt remove -y libreoffice*
+
+   #sudo apt remove -y initramfs-tools
+
+   if [ "$__SYSTEM_DISTRO" = "ubuntu" ]; then
+
+      sudo apt remove -y firefox
+
+      sudo snap remove firefox
+
+   elif [ "$__SYSTEM_DISTRO" = "debian" ]; then
+
+      sudo apt remove -y evolution
+
+      #sudo apt remove -y firefox-esr
+
+      sudo apt remove -y chromium
+
+   fi
 
    sudo apt autoremove -y
 
@@ -327,7 +747,25 @@ if [ "$DISTRO" = "ubuntu" ]; then
 
    INSTALL="sudo apt -y install"
 
-elif [ "$DISTRO" = "fedora" ]; then   
+elif [ "$__SYSTEM_DISTRO_FAMILY" = "zypper" ]; then   
+
+   zypper_install_chrome
+
+   sudo zypper --non-interactive install cmake gcc-c++ pkgconf gdb
+
+   sudo zypper --non-interactive remove firefox libreoffice*
+
+   sudo zypper --non-interactive remove kmail kcalendar
+
+   sudo zypper --non-interactive install gnome-keyring
+
+   sudo zypper --non-interactive check-update
+
+   sudo zypper --non-interactive upgrade
+
+   INSTALL="sudo zypper --non-interactive install"
+
+elif [ "$__SYSTEM_DISTRO" = "fedora" ]; then   
 
    rpm_install_chrome
 
@@ -349,30 +787,20 @@ fi
 $INSTALL git git-lfs
 
 
+install_git_core_credentials_manager
+
+
 git_config
 
 
-if [ "$DISTRO" = "ubuntu" ]; then
-
+if [ "$__SYSTEM_DISTRO_FAMILY" = "debian" ]; then
 
    sudo apt autoremove -y
 
-   ubuntu_install_git_core_credentials_manager
-
-
-elif [ "$DISTRO" = "fedora" ]; then   
-
-   other_install_git_core_credentials_manager
- 
-   if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
-
-      sudo sed -i '/^#\{0,1\}\(Relogin=\).*/ s//\1true/' /etc/sddm.conf
-      sudo sed -i '/^#\{0,1\}\(Session=\).*/ s//\1plasma.desktop/' /etc/sddm.conf
-      sudo sed -i '/^#\{0,1\}\(User=\).*/ s//\1build/' /etc/sddm.conf
-
-   fi
-
 fi
+
+
+configure_automatic_login
 
 
 echo ""
@@ -396,7 +824,7 @@ echo ""
 sleep 1
 
 
-if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
+if [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "kde" ]; then
 
    qdbus org.kde.Shutdown /Shutdown logoutAndReboot
 

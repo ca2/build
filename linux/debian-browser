@@ -1,0 +1,7 @@
+Package: firefox-esr
+Version: 99:99
+Maintainer: Your Name <mail@domain.com>
+Architecture: all
+Description: dummy gnome-games package
+ A dummy package with a version number so high that the real gnome packages
+ will never reach it.

@@ -1,6 +1,133 @@
 #!/bin/bash
 
 
+get_full_hostname()
+{
+
+   if [ "$__SYSTEM_DISTRO_FAMILY" = "zypper" ]; then
+
+      FULL_HOSTNAME=$(cat /etc/hostname)
+
+   elif [ "$__SYSTEM_DISTRO" = "fedora" ]; then
+
+      FULL_HOSTNAME=$(hostnamectl --static)
+
+   elif [ "$__SYSTEM_DISTRO" = "ubuntu" ]; then
+
+      FULL_HOSTNAME=$(hostnamectl --static)
+
+   else
+
+      FULL_HOSTNAME=$(hostname -f)
+
+   fi
+
+}
+
+
+distro__desktop_environment_and_release()
+{
+
+
+   if [ -f /etc/os-release ]; then
+      
+      # freedesktop.org and systemd
+      
+      . /etc/os-release
+
+      __SYSTEM_DISTRO=$ID
+      __SYSTEM_DESKTOP_ENVIRONMENT=$VARIANT_ID
+      __SYSTEM_DISTRO_RELEASE=$VERSION_ID
+
+   elif type lsb_release >/dev/null 2>&1; then
+      # linuxbase.org
+      OS=$(lsb_release -si)
+      VER=$(lsb_release -sr)
+   elif [ -f /etc/lsb-release ]; then
+      # For some versions of Debian/Ubuntu without lsb_release command
+      . /etc/lsb-release
+      OS=$DISTRIB_ID
+      VER=$DISTRIB_RELEASE
+   elif [ -f /etc/debian_version ]; then
+      # Older Debian/Ubuntu/etc.
+      OS=Debian
+      VER=$(cat /etc/debian_version)
+   elif [ -f /etc/SuSe-release ]; then
+      # Older SuSE/etc.
+      ...
+   elif [ -f /etc/redhat-release ]; then
+      # Older Red Hat, CentOS, etc.
+      ...
+   else
+      # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+      OS=$(uname -s)
+      VER=$(uname -r)
+   fi 
+
+
+   __SYSTEM_DISTRO_FAMILY="$__SYSTEM_DISTRO"
+
+
+   if [ "$__SYSTEM_DISTRO" = "ubuntu" ]; then
+
+      __SYSTEM_DISTRO_FAMILY="debian"
+
+   elif [ "$__SYSTEM_DISTRO" = "debian" ]; then
+
+      __SYSTEM_DISTRO_FAMILY="debian"
+
+   elif [ "$__SYSTEM_DISTRO" = "opensuse-tumbleweed" ]; then
+
+      __SYSTEM_DISTRO_FAMILY="zypper"
+
+   elif [ "$__SYSTEM_DISTRO" = "opensuse-leap" ]; then
+
+      __SYSTEM_DISTRO_FAMILY="zypper"
+
+   fi
+
+
+   if [ -z "$__SYSTEM_DESKTOP_ENVIRONMENT" ]; then
+
+      # echo "DESKTOP_ENVIRONMENT is empty here"
+
+      if [ "$__SYSTEM_DISTRO_FAMILY" = "debian" ] || [ "$__SYSTEM_DISTRO_FAMILY" = "zypper" ]; then
+
+         # echo "DISTRO is ubuntu"
+
+         __SYSTEM_IDESKTOP="${XDG_CURRENT_DESKTOP,,}"
+
+         # echo "lower case xdg_current_desktop is $IDESKTOP"
+
+         if [[ "$__SYSTEM_IDESKTOP" == *"gnome"* ]]; then
+
+            # echo "lower case xdg_current_desktop contains gnome"
+
+            __SYSTEM_DESKTOP_ENVIRONMENT="gnome"
+
+         elif [[ "$__SYSTEM_IDESKTOP" == *"kde"* ]]; then
+
+            # echo "lower case xdg_current_desktop contains gnome"
+
+            __SYSTEM_DESKTOP_ENVIRONMENT="kde"
+
+         fi
+
+      fi
+
+   fi
+
+
+   echo "__SYSTEM_DISTRO is $__SYSTEM_DISTRO"
+   echo "__SYSTEM_DISTRO_FAMILY is $__SYSTEM_DISTRO_FAMILY"
+   echo "__SYSTEM_DESKTOP_ENVIRONMENT is $__SYSTEM_DESKTOP_ENVIRONMENT"
+   echo "__SYSTEM_DISTRO_RELEASE is $__SYSTEM_DISTRO_RELEASE"
+
+
+}
+
+
+
 clone_linux_basis_solution()
 {
 
@@ -8,72 +135,379 @@ clone_linux_basis_solution()
 
    mkdir solution
 
+   REPOSITORY_TO_CLONE=""
+
    cd solution
 
-   git clone https://github.com/ca2/linux-basis-solution basis --recurse-submodules
+   while true; do
+
+      while true; do
+
+         echo ""
+         echo ""
+         echo ""
+         echo ""
+         echo "Please choose which linux repository to clone:"
+         echo "1) https://github.com/ca2/linux-basis-solution"
+         echo "2) https://github.com/ca2/linux-basis-solution3"
+         echo ""
+         echo ""
+         read RESPONSE
+
+         if [ "$RESPONSE" = "1" ]; then
+
+            REPOSITORY_TO_CLONE="https://github.com/ca2/linux-basis-solution"
+
+            break
+
+         elif [ "$RESPONSE" = "2" ]; then
+
+            REPOSITORY_TO_CLONE="https://github.com/ca2/linux-basis-solution3"
+
+            break
+
+         fi
+
+      done
+
+      echo ""
+      echo ""
+      echo "You want to clone the repository:"
+      echo "$REPOSITORY_TO_CLONE"
+      echo ""
+      echo ""
+      echo "Is it right? (Y/*)"
+      read RESPONSE
+
+      if [ -z "$RESPONSE" ]; then
+
+         break
+
+      elif [ "$RESPONSE" = "y" ]; then
+
+         break
+
+      elif [ "$RESPONSE" = "Y" ]; then
+
+         break
+
+      fi
+
+   done
+
+   git clone "$REPOSITORY_TO_CLONE" basis --recurse-submodules
 
 }
+
+
+defer_git_config()
+{
+
+   
+   get_full_hostname
+
+
+   GITHUB_ID=$(cat $HOME/github_id.txt)
+   GITHUB_ID=($echo $GITHUB_ID)
+
+
+   DEFER_GIT_CONFIG="1"
+
+
+   while [ "$DEFER_GIT_CONFIG" -eq "1" ]; do
+
+      git ls-remote https://github.com/$GITHUB_ID/user_config_$FULL_HOSTNAME -q
+
+      USER_LOCAL_CONFIG_OK=$?
+
+      if [ "$USER_LOCAL_CONFIG_OK" -eq "0" ]; then
+
+         break
+
+      fi
+
+      echo ""
+      echo ""
+      echo "Could not connect to https://github.com/$GITHUB_ID/user_config_$FULL_HOSTNAME"
+      echo ""
+      echo ""
+      
+      while true; do
+
+         echo "Retry? (Y/n)"
+         read RESPONSE
+
+
+         if [ -z "$RESPONSE" ]; then
+
+            DEFER_GIT_CONFIG="1"
+
+            break
+
+         elif [ "$RESPONSE" = "y" ]; then
+
+            DEFER_GIT_CONFIG="1"
+
+            break
+
+         elif [ "$RESPONSE" = "Y" ]; then
+
+            DEFER_GIT_CONFIG="1"
+
+            break
+
+         elif [ "$RESPONSE" = "n" ]; then
+
+            DEFER_GIT_CONFIG="0"
+
+            break
+
+         elif [ "$RESPONSE" = "N" ]; then
+
+            DEFER_GIT_CONFIG="0"
+
+            break
+
+         fi
+
+      done
+            
+   done
+
+}
+
+
+distro__desktop_environment_and_release
+
+
+defer_git_config
 
 
 clone_linux_basis_solution
 
 
-PATH=$HOME/solution/basis/archive/tool-linux/bin:$PATH
+sleep 2
+
+
+$HOME/solution/basis/operating-system/tool-linux/bin/checkout
+
+
+sleep 2
+
+
+PATH=$HOME/solution/basis/operating-system/tool-linux/bin:$PATH
 
 
 export PATH
 
 
-. patch_shell
+. $HOME/solution/basis/operating-system/tool-linux/bin/patch_shell
+
+echo ""
+
+sleep 1
+
+echo ""
+
+sleep 1
+
+echo ""
+
+sleep 1
+
+echo ""
+
+sleep 1
+
+echo ""
+
+sleep 1
 
 
-. _distro__desktop_environment_and_release
+. $HOME/solution/basis/operating-system/tool-linux/bin/_distro__desktop_environment_and_release
+
+echo "__SYSTEM_DISTRO is $__SYSTEM_DISTRO"
+
+sleep 1
+
+echo "__SYSTEM_DISTRO_FAMILY is $__SYSTEM_DISTRO_FAMILY"
+
+sleep 1
+
+echo "__SYSTEM_DESKTOP_ENVIRONMENT is $__SYSTEM_DESKTOP_ENVIRONMENT"
+
+sleep 1
+
+echo "__SYSTEM_DISTRO_RELEASE is $__SYSTEM_DISTRO_RELEASE"
+
+sleep 1
+
+echo "__SYSTEM_SUDO_INSTALL is $__SYSTEM_SUDO_INSTALL"
+
+sleep 1
 
 
-checkout
+echo "Going to install design tools..."
 
 
-if [ "$DISTRO" = "fedora" ]; then
+sleep 2
 
 
-   fedorarepo
+if [ "$__SYSTEM_DISTRO" = "fedora" ]; then
 
 
-   if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
+   echo "Going to install Extra fedora repositories..."
+
+   sleep 2
+
+   $HOME/solution/basis/operating-system/tool-linux/bin/fedorarepo
 
 
-      kfedoradeps
+   if [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "kde" ]; then
 
+      echo "Going to install for KDE..."
 
-   elif [ "$DESKTOP_ENVIRONMENT" = "gnome" ]; then
+      sleep 2
 
+      $HOME/solution/basis/operating-system/tool-linux/bin/kfedoradeps
 
-      fedoradeps
+   elif [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "gnome" ]; then
 
+      echo "Going to install for GNOME..."
+
+      sleep 2
+
+      $HOME/solution/basis/operating-system/tool-linux/bin/fedoradeps
+
+   else
+
+      echo "Desktop Environment not known... cannot find suitable design tools setup script... "
+
+      exit -1
 
    fi
 
 
-elif [ "$DISTRO" = "ubuntu" ]; then
+elif [ "$__SYSTEM_DISTRO" = "ubuntu" ]; then
 
 
-   if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
+   echo "Going to install for Ubuntu..."
+
+   sleep 2
 
 
-      kubuntudeps
+   if [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "kde" ]; then
 
 
-   elif [ "$DESKTOP_ENVIRONMENT" = "gnome" ]; then
+      echo "Going to install for KDE..."
+
+      sleep 2
 
 
-      ubuntudeps
+      $HOME/solution/basis/operating-system/tool-linux/bin/kubuntudeps
 
+
+   elif [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "gnome" ]; then
+
+
+      echo "Going to install for GNOME..."
+
+      sleep 2
+
+      $HOME/solution/basis/operating-system/tool-linux/bin/ubuntudeps
+
+   else
+
+      echo "Desktop Environment not known... cannot find suitable design tools setup script... "
+
+      exit -1
 
    fi
 
+
+elif [ "$__SYSTEM_DISTRO" = "debian" ]; then
+
+
+   echo "Going to install for Debian..."
+
+   sleep 2
+
+
+   if [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "gnome" ]; then
+
+
+      echo "Going to install for GNOME..."
+
+      sleep 2
+
+
+      $HOME/solution/basis/operating-system/tool-linux/bin/debiandeps
+
+
+   elif [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "kde" ]; then
+
+
+      echo "Going to install for KDE..."
+
+      sleep 2
+
+
+      $HOME/solution/basis/operating-system/tool-linux/bin/kdebiandeps
+
+   else
+
+      echo "Desktop Environment not known... cannot find suitable design tools setup script... "
+
+      exit -1
+
+   fi
+
+
+elif [ "$__SYSTEM_DISTRO_FAMILY" = "zypper" ]; then
+
+
+   echo "Going to install for Zypper..."
+
+   sleep 2
+
+
+   if [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "gnome" ]; then
+
+
+      echo "Going to install for GNOME..."
+
+      sleep 2
+
+
+      $HOME/solution/basis/operating-system/tool-linux/bin/zypperdeps
+
+
+   elif [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "kde" ]; then
+
+
+      echo "Going to install for KDE..."
+
+      sleep 2
+
+
+      $HOME/solution/basis/operating-system/tool-linux/bin/kzypperdeps
+
+   else
+
+      echo "Desktop Environment not known... cannot find suitable design tools setup script... "
+
+      exit -1
+
+   fi
+
+
+else
+
+   echo "Distro not known... cannot find suitable design tools setup script... "
+
+   exit -1
 
 fi
-
 
 
 
@@ -98,7 +532,7 @@ echo ""
 sleep 1
 
 
-if [ "$DESKTOP_ENVIRONMENT" = "kde" ]; then
+if [ "$__SYSTEM_DESKTOP_ENVIRONMENT" = "kde" ]; then
 
    qdbus org.kde.Shutdown /Shutdown logoutAndReboot
 
@@ -107,9 +541,6 @@ else
    sudo reboot
 
 fi
-
-
-
 
 
 
